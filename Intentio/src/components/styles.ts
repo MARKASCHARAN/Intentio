@@ -1,50 +1,54 @@
 /**
- * Intentio Design System — shared tokens for colors, typography, and spacing.
- * All components should import from here — no inline colors or magic numbers.
+ * Intentio Design System — Million-Dollar Ultra-Premium Aesthetic Tokens
+ * Glassmorphism, Neon Glows, Rich Gradients & Modern Typography
  */
-import {StyleSheet} from 'react-native';
+import {StyleSheet, Platform} from 'react-native';
 
 // ─── Color Palette ────────────────────────────────────────────────────────────
 export const Colors = {
-  // Backgrounds
-  background: '#0A0A0F',      // Deep space black
-  surface: '#13131A',         // Card / modal background
-  surfaceAlt: '#1C1C28',      // Elevated surface (bottom sheet, etc.)
-  surfaceBorder: '#2A2A3A',   // Subtle borders
+  // Deep Space Backgrounds
+  background: '#030712',        // Obsidian black
+  surface: '#0B0F19',           // Dark glass surface
+  surfaceAlt: '#111827',        // Elevated dark surface
+  surfaceBorder: '#1F2937',     // Crisp dark border
+  glassBorder: 'rgba(0, 242, 254, 0.2)', // Neon cyan subtle border
 
-  // Brand
-  primary: '#1A237E',         // Deep blue (primary brand)
-  accent: '#00BCD4',          // Teal (agent color)
-  highlight: '#FF6F00',       // Amber (CTAs, important actions)
+  // Brand Neon Gradients & Highlights
+  primary: '#00F2FE',           // Electric Neon Cyan
+  primaryLight: '#38EF7D',      // Bright Emerald Neon
+  secondary: '#7928CA',         // Neon Purple
+  accent: '#00F2FE',            // Vibrant Cyan Accent
+  highlight: '#FF007A',         // Neon Magenta Accent
 
   // Agent State Colors (Agora v2.9 state notifications)
-  listening: '#00E676',       // Vivid green
-  listeningBg: 'rgba(0, 230, 118, 0.12)',
-  thinking: '#FF9100',        // Vivid amber
-  thinkingBg: 'rgba(255, 145, 0, 0.12)',
-  speaking: '#448AFF',        // Electric blue
-  speakingBg: 'rgba(68, 138, 255, 0.12)',
-  idle: '#616161',            // Neutral grey
+  listening: '#10B981',         // Emerald Green
+  listeningGlow: 'rgba(16, 185, 129, 0.35)',
+  thinking: '#F59E0B',          // Vivid Amber
+  thinkingGlow: 'rgba(245, 158, 11, 0.35)',
+  speaking: '#3B82F6',          // Electric Blue
+  speakingGlow: 'rgba(59, 130, 246, 0.35)',
+  idle: '#6B7280',              // Metallic Slate Grey
 
-  // Text
-  textPrimary: '#FFFFFF',
-  textSecondary: '#9E9E9E',
-  textMuted: '#616161',
+  // Text Hierarchy
+  textPrimary: '#F9FAFB',
+  textSecondary: '#9CA3AF',
+  textMuted: '#4B5563',
 
   // Semantic
-  success: '#00E676',
-  warning: '#FF9100',
-  error: '#FF5252',
+  success: '#10B981',
+  warning: '#F59E0B',
+  error: '#EF4444',
 };
 
 // ─── Typography ───────────────────────────────────────────────────────────────
 export const Typography = {
-  fontRegular: 400,
-  fontMedium: 500,
-  fontSemiBold: 600,
-  fontBold: 700,
+  fontRegular: '400',
+  fontMedium: '500',
+  fontSemiBold: '600',
+  fontBold: '700',
+  fontExtraBold: '800',
 
-  sizeXXL: 36,
+  sizeXXL: 38,
   sizeXL: 28,
   sizeLG: 22,
   sizeMD: 18,
@@ -56,8 +60,8 @@ export const Typography = {
 
 // ─── Spacing ──────────────────────────────────────────────────────────────────
 export const Spacing = {
-  xs: 4,
-  sm: 8,
+  xs: 6,
+  sm: 10,
   md: 16,
   lg: 24,
   xl: 32,
@@ -66,11 +70,11 @@ export const Spacing = {
 
 // ─── Border Radius ────────────────────────────────────────────────────────────
 export const Radius = {
-  sm: 8,
-  md: 12,
-  lg: 16,
-  xl: 24,
-  full: 999,
+  sm: 10,
+  md: 14,
+  lg: 20,
+  xl: 28,
+  full: 9999,
 };
 
 // ─── Shared Styles ────────────────────────────────────────────────────────────
@@ -79,12 +83,17 @@ export const SharedStyles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
-  card: {
-    backgroundColor: Colors.surface,
+  glassCard: {
+    backgroundColor: 'rgba(17, 24, 39, 0.75)',
     borderRadius: Radius.lg,
     padding: Spacing.md,
     borderWidth: 1,
     borderColor: Colors.surfaceBorder,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 10},
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    elevation: 8,
   },
   row: {
     flexDirection: 'row',
@@ -97,16 +106,17 @@ export const SharedStyles = StyleSheet.create({
   textPrimary: {
     color: Colors.textPrimary,
     fontSize: Typography.sizeBase,
+    fontWeight: '500',
   },
   textSecondary: {
     color: Colors.textSecondary,
     fontSize: Typography.sizeSM,
   },
-  shadow: {
+  neonGlow: {
     shadowColor: Colors.accent,
-    shadowOffset: {width: 0, height: 4},
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 6,
+    shadowOffset: {width: 0, height: 0},
+    shadowOpacity: 0.8,
+    shadowRadius: 16,
+    elevation: 12,
   },
 });

@@ -1,7 +1,5 @@
 /**
- * MicButton — push-to-talk and toggle mic button with visual feedback.
- *
- * Supports desktop web mouse click, touch events, and hold-to-talk.
+ * MicButton — Million-Dollar Pulsing Neon Microphone Control Button
  */
 import React, {useRef} from 'react';
 import {
@@ -29,13 +27,13 @@ export function MicButton({
   isActive = false,
   isPushToTalk = false,
   disabled = false,
-  size = 72,
+  size = 76,
 }: MicButtonProps): React.JSX.Element {
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
   const handlePressIn = () => {
     Animated.spring(scaleAnim, {
-      toValue: 0.92,
+      toValue: 0.9,
       useNativeDriver: false,
       friction: 5,
     }).start();
@@ -61,22 +59,23 @@ export function MicButton({
     ? Colors.listening
     : Colors.accent;
 
+  const shadowColor = isActive ? Colors.listening : Colors.accent;
+
   return (
     <Animated.View
       style={[styles.wrapper, {transform: [{scale: scaleAnim}]}]}>
-      {/* Outer glow ring when active */}
-      {isActive && (
-        <View
-          style={[
-            styles.glowRing,
-            {
-              width: size + 24,
-              height: size + 24,
-              borderRadius: (size + 24) / 2,
-            },
-          ]}
-        />
-      )}
+      {/* Outer ambient glow halo */}
+      <View
+        style={[
+          styles.glowHalo,
+          {
+            width: size + 28,
+            height: size + 28,
+            borderRadius: (size + 28) / 2,
+            backgroundColor: isActive ? Colors.listeningGlow : 'rgba(0, 242, 254, 0.25)',
+          },
+        ]}
+      />
 
       <TouchableOpacity
         accessibilityLabel={
@@ -94,7 +93,7 @@ export function MicButton({
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         onPress={handleClick}
-        activeOpacity={0.8}
+        activeOpacity={0.85}
         style={[
           styles.button,
           {
@@ -102,6 +101,7 @@ export function MicButton({
             height: size,
             borderRadius: size / 2,
             backgroundColor,
+            shadowColor,
           },
         ]}>
         <Animated.Text style={styles.micEmoji}>
@@ -116,24 +116,22 @@ const styles = StyleSheet.create({
   wrapper: {
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'relative',
   },
-  glowRing: {
+  glowHalo: {
     position: 'absolute',
-    borderWidth: 2,
-    borderColor: Colors.listening,
-    opacity: 0.4,
+    borderWidth: 1.5,
+    borderColor: 'rgba(0, 242, 254, 0.4)',
   },
   button: {
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: Colors.accent,
-    shadowOffset: {width: 0, height: 4},
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
-    cursor: 'pointer',
+    shadowOffset: {width: 0, height: 0},
+    shadowOpacity: 0.95,
+    shadowRadius: 20,
+    elevation: 12,
   },
   micEmoji: {
-    fontSize: 28,
+    fontSize: 30,
   },
 });

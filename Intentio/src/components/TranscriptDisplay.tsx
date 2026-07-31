@@ -1,10 +1,8 @@
 /**
- * TranscriptDisplay — scrollable conversation history.
- * Shows user and agent messages in distinct bubble styles.
+ * TranscriptDisplay — Million-Dollar Glassmorphic Chat Display
  */
 import React, {useRef, useEffect} from 'react';
 import {
-  ScrollView,
   View,
   Text,
   StyleSheet,
@@ -31,10 +29,18 @@ function TranscriptBubble({entry}: {entry: TranscriptEntry}): React.JSX.Element 
           styles.bubble,
           isUser ? styles.userBubble : styles.agentBubble,
         ]}>
+        {!isUser && (
+          <View style={styles.agentHeader}>
+            <Text style={styles.agentBadgeIcon}>🎯</Text>
+            <Text style={styles.agentBadgeName}>Intentio</Text>
+          </View>
+        )}
         <Text style={[styles.bubbleText, isUser ? styles.userText : styles.agentText]}>
           {entry.text}
         </Text>
-        <Text style={styles.timestamp}>{time}</Text>
+        <Text style={[styles.timestamp, isUser ? styles.userTimestamp : styles.agentTimestamp]}>
+          {time}
+        </Text>
       </View>
     </View>
   );
@@ -54,8 +60,11 @@ export function TranscriptDisplay({
   if (entries.length === 0) {
     return (
       <View style={styles.emptyContainer}>
-        <Text style={styles.emptyEmoji}>💬</Text>
-        <Text style={styles.emptyText}>Your conversation will appear here</Text>
+        <View style={styles.radarRing}>
+          <Text style={styles.emptyEmoji}>🎙️</Text>
+        </View>
+        <Text style={styles.emptyTitle}>Listening for your intent...</Text>
+        <Text style={styles.emptyText}>Speak naturally — "Book a flight to London for tomorrow"</Text>
       </View>
     );
   }
@@ -76,12 +85,12 @@ export function TranscriptDisplay({
 const styles = StyleSheet.create({
   listContent: {
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    gap: Spacing.sm,
+    paddingVertical: Spacing.md,
+    gap: Spacing.md,
   },
   bubbleRow: {
     flexDirection: 'row',
-    marginVertical: 2,
+    marginVertical: 3,
   },
   userRow: {
     justifyContent: 'flex-end',
@@ -90,24 +99,54 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
   },
   bubble: {
-    maxWidth: '78%',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
+    maxWidth: '82%',
+    paddingHorizontal: Spacing.md + 2,
+    paddingVertical: Spacing.sm + 2,
     borderRadius: Radius.lg,
+    gap: 4,
   },
   userBubble: {
-    backgroundColor: Colors.primary,
+    backgroundColor: 'rgba(0, 242, 254, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 242, 254, 0.4)',
     borderBottomRightRadius: 4,
+    shadowColor: Colors.accent,
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 4,
   },
   agentBubble: {
-    backgroundColor: Colors.surfaceAlt,
-    borderBottomLeftRadius: 4,
+    backgroundColor: 'rgba(17, 24, 39, 0.9)',
     borderWidth: 1,
     borderColor: Colors.surfaceBorder,
+    borderBottomLeftRadius: 4,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  agentHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 2,
+  },
+  agentBadgeIcon: {
+    fontSize: 12,
+  },
+  agentBadgeName: {
+    fontSize: Typography.sizeXXS,
+    color: Colors.accent,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
   },
   bubbleText: {
-    fontSize: Typography.sizeBase,
+    fontSize: Typography.sizeBase - 1,
     lineHeight: 22,
+    fontWeight: '400',
   },
   userText: {
     color: Colors.textPrimary,
@@ -117,8 +156,14 @@ const styles = StyleSheet.create({
   },
   timestamp: {
     fontSize: Typography.sizeXXS,
+    marginTop: 2,
+  },
+  userTimestamp: {
+    color: 'rgba(0, 242, 254, 0.7)',
+    alignSelf: 'flex-end',
+  },
+  agentTimestamp: {
     color: Colors.textMuted,
-    marginTop: 4,
     alignSelf: 'flex-end',
   },
   emptyContainer: {
@@ -126,13 +171,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.sm,
+    paddingHorizontal: Spacing.xl,
+  },
+  radarRing: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(0, 242, 254, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 242, 254, 0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.xs,
   },
   emptyEmoji: {
-    fontSize: 40,
-    opacity: 0.4,
+    fontSize: 28,
+  },
+  emptyTitle: {
+    color: Colors.textPrimary,
+    fontSize: Typography.sizeBase,
+    fontWeight: '600',
   },
   emptyText: {
     color: Colors.textMuted,
-    fontSize: Typography.sizeSM,
+    fontSize: Typography.sizeXS,
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
 });
