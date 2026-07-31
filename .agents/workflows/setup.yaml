@@ -1,0 +1,12 @@
+# Intentio - Complete Setup Workflow
+# Invoke with: /intentio-setup
+
+Description: Setup the complete Intentio project from scratch
+
+Steps:
+  1. Call `write_specs` skill to create Technical Specification
+  2. Wait for user approval
+  3. Call `rn_setup` skill to setup React Native project
+  4. Call `backend_setup` skill to setup backend server
+  5. Call `v2.9_features` skill to implement Agora v2.9 features
+  6. Call `mcp_tools` skill to setup MCP server

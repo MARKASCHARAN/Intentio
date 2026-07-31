@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Environment & Credentials
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.pem
+
+# Expo & Mobile Build Artifacts
+.expo/
+.bundle/
+dist/
+web-build/
+*.apk
+*.aab
+*.ipa
+
+# Xcode & Android Studio
+android/app/build/
+android/.gradle/
+ios/Pods/
+ios/build/
+*.xcworkspace
+*.xcodeproj
+
+# IDE & OS Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Antigravity / Agent Brain Cache
+.system_generated/
+scratch/

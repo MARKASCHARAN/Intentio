@@ -1,0 +1,11 @@
+# Intentio - Deploy Workflow
+# Invoke with: /intentio-deploy
+
+Description: Deploy Intentio app for testing
+
+Steps:
+  1. Check all dependencies installed
+  2. Start backend server
+  3. Start React Native Metro bundler
+  4. Run app on connected Android device
+  5. Open Agent Manager to monitor agent
