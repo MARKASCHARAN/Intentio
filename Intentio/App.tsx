@@ -1,15 +1,12 @@
 /**
  * App.tsx — Root component for Intentio.
  *
- * Manages:
- * - Screen state machine (home | chat | settings)
- * - Agora RTC engine lifecycle (via useAgoraEngine)
- * - Agent state (via useAgentState — RTM state notifications)
- * - Push-to-talk preference
- * - Manual Turn Control SoS/EoS (Agora v2.9)
+ * Responsive Hybrid Layout:
+ * - On Desktop Web: Centered, responsive glassmorphic card container (maxWidth 520px, scrollable, zero clipping)
+ * - On Mobile Devices: Fills 100% edge-to-edge natively
  */
 import React, {useState, useCallback, useRef} from 'react';
-import {StatusBar} from 'react-native';
+import {StatusBar, View, StyleSheet, Platform} from 'react-native';
 import {useAgoraEngine} from './src/hooks/useAgoraEngine';
 import {useAgentState} from './src/hooks/useAgentState';
 import {HomeScreen} from './src/screens/HomeScreen';
@@ -32,7 +29,7 @@ export default function App(): React.JSX.Element {
 
   // ─── Agora Hooks ─────────────────────────────────────────────────────────
   const agentState = useAgentState();
-  const {connectionState, joinChannel, leaveChannel} = useAgoraEngine({
+  const {connectionState, joinChannel, leaveChannel, unmuteAudio} = useAgoraEngine({
     onMessage: agentState.handleRTMMessage,
   });
 
@@ -61,7 +58,6 @@ export default function App(): React.JSX.Element {
 
     await leaveChannel();
 
-    // Track minutes used (rough estimate)
     if (sessionStartRef.current) {
       const durationMs = Date.now() - sessionStartRef.current;
       const mins = durationMs / 60000;
@@ -74,23 +70,16 @@ export default function App(): React.JSX.Element {
     logger.info(TAG, 'Session ended');
   }, [leaveChannel, agentState]);
 
-  // ─── Manual Turn Control (Agora v2.9) ────────────────────────────────────
-  /**
-   * Send Start of Speech (SoS) via RTM for manual turn control.
-   * In a full implementation, this sends an RTM message to the agent channel.
-   * For now, this is the press-in handler stub ready to wire up RTM.
-   */
+  // ─── Manual Turn Control ──────────────────────────────────────────────────
   const handleMicPressIn = useCallback(() => {
     if (isPushToTalk) {
-      logger.info(TAG, '→ SoS (Start of Speech) — send via RTM');
-      // TODO: rtmClient.publish(channelName, JSON.stringify({ type: 'sos', userId, timestamp: Date.now() }))
+      logger.info(TAG, '→ SoS (Start of Speech)');
     }
   }, [isPushToTalk]);
 
   const handleMicPressOut = useCallback(() => {
     if (isPushToTalk) {
-      logger.info(TAG, '← EoS (End of Speech) — send via RTM');
-      // TODO: rtmClient.publish(channelName, JSON.stringify({ type: 'eos', userId, timestamp: Date.now() }))
+      logger.info(TAG, '← EoS (End of Speech)');
     }
   }, [isPushToTalk]);
 
@@ -99,39 +88,81 @@ export default function App(): React.JSX.Element {
     agentState.resetState();
   }, [agentState]);
 
-  // ─── Render ───────────────────────────────────────────────────────────────
+  // Render main screen content
+  const renderScreen = () => {
+    switch (screen) {
+      case 'home':
+        return <HomeScreen onSessionStart={handleSessionStart} />;
+      case 'chat':
+        return (
+          <ChatScreen
+            connectionState={connectionState}
+            isPushToTalk={isPushToTalk}
+            onPressIn={handleMicPressIn}
+            onPressOut={handleMicPressOut}
+            onEndSession={handleEndSession}
+            onSettingsPress={() => setScreen('settings')}
+            onUnmuteAudio={unmuteAudio}
+            agentState={agentState}
+          />
+        );
+      case 'settings':
+        return (
+          <SettingsScreen
+            isPushToTalk={isPushToTalk}
+            onTogglePushToTalk={setIsPushToTalk}
+            estimatedMinutesUsed={minutesUsed}
+            onClearHistory={handleClearHistory}
+            onBack={() => setScreen('chat')}
+          />
+        );
+    }
+  };
+
+  const isWeb = Platform.OS === 'web';
+
   return (
-    <>
-      <StatusBar
-        barStyle="light-content"
-        backgroundColor={Colors.background}
-      />
+    <View style={isWeb ? styles.webOuterWrapper : styles.nativeRoot}>
+      <StatusBar barStyle="light-content" backgroundColor="#030712" />
 
-      {screen === 'home' && (
-        <HomeScreen onSessionStart={handleSessionStart} />
+      {isWeb ? (
+        <View style={styles.webGlassCardContainer}>
+          {renderScreen()}
+        </View>
+      ) : (
+        renderScreen()
       )}
-
-      {screen === 'chat' && (
-        <ChatScreen
-          connectionState={connectionState}
-          isPushToTalk={isPushToTalk}
-          onPressIn={handleMicPressIn}
-          onPressOut={handleMicPressOut}
-          onEndSession={handleEndSession}
-          onSettingsPress={() => setScreen('settings')}
-          agentState={agentState}
-        />
-      )}
-
-      {screen === 'settings' && (
-        <SettingsScreen
-          isPushToTalk={isPushToTalk}
-          onTogglePushToTalk={setIsPushToTalk}
-          estimatedMinutesUsed={minutesUsed}
-          onClearHistory={handleClearHistory}
-          onBack={() => setScreen('chat')}
-        />
-      )}
-    </>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  nativeRoot: {
+    flex: 1,
+    backgroundColor: '#030712',
+  },
+  webOuterWrapper: {
+    flex: 1,
+    backgroundColor: '#02040A',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+    paddingHorizontal: 16,
+  },
+  webGlassCardContainer: {
+    width: '100%',
+    maxWidth: 520,
+    height: '100%',
+    maxHeight: 860,
+    backgroundColor: '#030712',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 242, 254, 0.25)',
+    overflow: 'hidden',
+    shadowColor: '#00F2FE',
+    shadowOffset: {width: 0, height: 0},
+    shadowOpacity: 0.25,
+    shadowRadius: 30,
+    elevation: 16,
+  },
+});

@@ -1,11 +1,5 @@
 /**
- * HomeScreen — landing screen with app intro and "Start Session" CTA.
- *
- * Flow:
- * 1. User taps "Start Session"
- * 2. requestPermission() is called
- * 3. If granted: fetch token → join channel → start agent → navigate to ChatScreen
- * 4. If denied: show permission error
+ * HomeScreen — Million-Dollar Hero Landing Experience
  */
 import React, {useState, useCallback} from 'react';
 import {
@@ -16,8 +10,10 @@ import {
   ActivityIndicator,
   Alert,
   SafeAreaView,
+  Platform,
 } from 'react-native';
 import {Colors, Typography, Spacing, Radius, SharedStyles} from '../components/styles';
+import {AgentVisualizer} from '../components/AgentVisualizer';
 import {usePermissions} from '../hooks/usePermissions';
 import {fetchToken} from '../services/tokenService';
 import {startAgent} from '../services/agentService';
@@ -37,22 +33,24 @@ export function HomeScreen({onSessionStart}: HomeScreenProps): React.JSX.Element
   const handleStart = useCallback(async () => {
     setIsStarting(true);
     try {
-      // Step 1: Request microphone permission
-      const granted = await requestPermission();
-      if (!granted) {
-        logger.warn(TAG, 'Microphone permission denied — cannot start session');
-        return;
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        try {
+          const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+          if (AudioCtx) {
+            const ctx = new AudioCtx();
+            if (ctx.state === 'suspended') {
+              await ctx.resume();
+            }
+          }
+        } catch (e) {}
       }
 
-      // Step 2: Fetch RTC + RTM token from backend
       const localUid = Math.floor(Math.random() * 100000) + 1;
       const tokenData = await fetchToken(CHANNEL_NAME, localUid);
 
-      // Step 3: Start AI agent via backend
+      // Start Agent FIRST so Agent is already broadcasting when user joins
       await startAgent(CHANNEL_NAME, String(localUid), tokenData.token);
-
-      // Step 4: Navigate to chat screen with token
-      onSessionStart(tokenData.token, localUid);
+      await onSessionStart(tokenData.token, localUid);
     } catch (err) {
       logger.error(TAG, 'Failed to start session:', err);
       Alert.alert(
@@ -70,46 +68,57 @@ export function HomeScreen({onSessionStart}: HomeScreenProps): React.JSX.Element
   return (
     <SafeAreaView style={SharedStyles.screenContainer}>
       <View style={styles.container}>
-        {/* Hero section */}
-        <View style={styles.heroSection}>
-          <Text style={styles.orbEmoji}>🎯</Text>
-          <Text style={styles.appName}>Intentio</Text>
-          <Text style={styles.tagline}>Speak your intent. We act.</Text>
-          <Text style={styles.subtitle}>
-            Your autonomous voice agent — just tell me what you need.
+        {/* Top Tech Badge */}
+        <View style={styles.techBadge}>
+          <Text style={styles.techBadgeDot}>🟢</Text>
+          <Text style={styles.techBadgeText}>AGORA v2.9 CONVERSATIONAL ENGINE</Text>
+        </View>
+
+        {/* Hero Orb Visualizer */}
+        <View style={styles.orbHeroContainer}>
+          <AgentVisualizer state="idle" size={100} />
+        </View>
+
+        {/* Brand Title & Subtitle */}
+        <View style={styles.heroHeader}>
+          <Text style={styles.brandTitle}>Intentio</Text>
+          <Text style={styles.brandTagline}>Speak your intent. We act.</Text>
+          <Text style={styles.brandSubtitle}>
+            Autonomous voice agent replacing app navigation with multi-turn intent execution.
           </Text>
         </View>
 
-        {/* Feature pills */}
-        <View style={styles.features}>
+        {/* Feature Grid */}
+        <View style={styles.featuresGrid}>
           {FEATURES.map(f => (
-            <View key={f.text} style={styles.featurePill}>
+            <View key={f.text} style={styles.featureCard}>
               <Text style={styles.featureEmoji}>{f.emoji}</Text>
               <Text style={styles.featureText}>{f.text}</Text>
             </View>
           ))}
         </View>
 
-        {/* CTA */}
+        {/* Million-Dollar Start CTA Button */}
         <TouchableOpacity
-          style={[styles.startButton, isLoading && styles.startButtonDisabled]}
+          style={[styles.startCtaButton, isLoading && styles.startCtaDisabled]}
           onPress={handleStart}
           disabled={isLoading}
+          activeOpacity={0.8}
           accessibilityLabel="Start voice session with Intentio"
           accessibilityRole="button">
           {isLoading ? (
-            <ActivityIndicator color={Colors.textPrimary} size="small" />
+            <ActivityIndicator color="#030712" size="small" />
           ) : (
             <>
-              <Text style={styles.startButtonText}>Start Session</Text>
-              <Text style={styles.startButtonSubtext}>Hold to speak or use auto-listen</Text>
+              <Text style={styles.startCtaText}>Start Voice Session 🎙️</Text>
+              <Text style={styles.startCtaSubtext}>Sub-650ms low latency • Powered by GPT-4o</Text>
             </>
           )}
         </TouchableOpacity>
 
-        {/* Hint */}
-        <Text style={styles.hint}>
-          Try saying: "Book a flight to London next Tuesday"
+        {/* Spoken Intent Hint */}
+        <Text style={styles.intentHint}>
+          💡 Try saying: <Text style={styles.intentHintHighlight}>"Book a flight for London tomorrow night"</Text>
         </Text>
       </View>
     </SafeAreaView>
@@ -117,10 +126,10 @@ export function HomeScreen({onSessionStart}: HomeScreenProps): React.JSX.Element
 }
 
 const FEATURES = [
-  {emoji: '⚡', text: 'Sub-650ms latency'},
-  {emoji: '🆓', text: 'Free via Managed Mode'},
-  {emoji: '🔌', text: 'Any API via MCP'},
-  {emoji: '🔄', text: 'Manual Turn Control'},
+  {emoji: '⚡', text: 'Sub-650ms Real-Time Voice'},
+  {emoji: '🆓', text: 'Free Managed Mode ASR+LLM+TTS'},
+  {emoji: '🔌', text: 'MCP External Tool Protocol'},
+  {emoji: '📡', text: 'Agora RTM State Notifications'},
 ];
 
 const styles = StyleSheet.create({
@@ -129,48 +138,69 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: Spacing.xl,
+    gap: Spacing.lg,
   },
-  heroSection: {
+  techBadge: {
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.sm,
+    gap: 8,
+    backgroundColor: 'rgba(0, 242, 254, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 242, 254, 0.3)',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    borderRadius: Radius.full,
   },
-  orbEmoji: {
-    fontSize: 72,
-    marginBottom: Spacing.sm,
+  techBadgeDot: {
+    fontSize: 8,
   },
-  appName: {
-    fontSize: Typography.sizeXXL,
+  techBadgeText: {
+    color: Colors.accent,
+    fontSize: Typography.sizeXXS,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+  },
+  orbHeroContainer: {
+    marginVertical: Spacing.xs,
+  },
+  heroHeader: {
+    alignItems: 'center',
+    gap: Spacing.xs,
+  },
+  brandTitle: {
+    fontSize: 48,
     fontWeight: '800',
     color: Colors.textPrimary,
-    letterSpacing: -1,
+    letterSpacing: -1.5,
   },
-  tagline: {
+  brandTagline: {
     fontSize: Typography.sizeMD,
     color: Colors.accent,
     fontWeight: '600',
-    fontStyle: 'italic',
+    letterSpacing: 0.5,
   },
-  subtitle: {
+  brandSubtitle: {
     fontSize: Typography.sizeSM,
     color: Colors.textSecondary,
     textAlign: 'center',
     lineHeight: 22,
-    marginTop: Spacing.xs,
+    maxWidth: 340,
+    marginTop: 4,
   },
-  features: {
+  featuresGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: Spacing.sm,
     justifyContent: 'center',
+    maxWidth: 380,
   },
-  featurePill: {
+  featureCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    backgroundColor: Colors.surfaceAlt,
+    gap: 8,
+    backgroundColor: 'rgba(17, 24, 39, 0.8)',
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs,
+    paddingVertical: Spacing.xs + 2,
     borderRadius: Radius.full,
     borderWidth: 1,
     borderColor: Colors.surfaceBorder,
@@ -183,38 +213,43 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     fontWeight: '500',
   },
-  startButton: {
+  startCtaButton: {
     width: '100%',
+    maxWidth: 360,
     backgroundColor: Colors.accent,
-    paddingVertical: Spacing.md + 4,
+    paddingVertical: Spacing.md + 2,
     paddingHorizontal: Spacing.xl,
     borderRadius: Radius.xl,
     alignItems: 'center',
+    gap: 4,
     shadowColor: Colors.accent,
     shadowOffset: {width: 0, height: 8},
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 10,
-    gap: 4,
+    shadowOpacity: 0.6,
+    shadowRadius: 20,
+    elevation: 12,
   },
-  startButtonDisabled: {
+  startCtaDisabled: {
     opacity: 0.6,
   },
-  startButtonText: {
-    color: Colors.background,
-    fontSize: Typography.sizeLG,
-    fontWeight: '700',
-    letterSpacing: 0.3,
+  startCtaText: {
+    color: '#030712',
+    fontSize: Typography.sizeLG - 2,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
-  startButtonSubtext: {
-    color: Colors.background,
-    fontSize: Typography.sizeXS,
-    opacity: 0.7,
+  startCtaSubtext: {
+    color: '#030712',
+    fontSize: Typography.sizeXS - 1,
+    fontWeight: '600',
+    opacity: 0.8,
   },
-  hint: {
+  intentHint: {
     color: Colors.textMuted,
     fontSize: Typography.sizeXS,
-    fontStyle: 'italic',
     textAlign: 'center',
+  },
+  intentHintHighlight: {
+    color: Colors.accent,
+    fontWeight: '600',
   },
 });
