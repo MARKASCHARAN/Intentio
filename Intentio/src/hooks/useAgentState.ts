@@ -2,7 +2,7 @@
  * useAgentState — subscribes to Agora RTM / Stream Messages and drives agent state.
  *
  * Agora v2.9 Feature: Agent State Notifications & Transcripts over Stream Messages.
- * Handles Agora v2.9 protocol format: "message_id|part|total|base64_payload"
+ * Handles Agora v2.9 multi-part protocol format: "message_id|part_num|total_parts|base64_payload"
  */
 import {useState, useCallback, useRef} from 'react';
 import type {AgentState, AgentStateType, TranscriptEntry} from '../types/agent';
@@ -12,7 +12,7 @@ const TAG = 'useAgentState';
 
 interface UseAgentStateReturn extends AgentState {
   handleRTMMessage: (message: string, senderId: string) => void;
-  addTranscriptEntry: (role: 'user' | 'agent', text: string) => void;
+  addTranscriptEntry: (role: 'user' | 'agent', text: string, isPartial?: boolean) => void;
   resetState: () => void;
 }
 
@@ -26,44 +26,103 @@ const INITIAL_STATE: AgentState = {
 export function useAgentState(): UseAgentStateReturn {
   const [state, setState] = useState<AgentState>(INITIAL_STATE);
   const transcriptIdRef = useRef(0);
+  const multiPartBufferRef = useRef<Map<string, {parts: Map<number, string>; total: number}>>(new Map());
 
-  /** Adds a new entry to the conversation transcript */
+  /** Updates current partial transcript in-place, or appends a new entry */
   const addTranscriptEntry = useCallback(
-    (role: 'user' | 'agent', text: string) => {
-      const entry: TranscriptEntry = {
-        id: `${Date.now()}-${transcriptIdRef.current++}`,
-        role,
-        text,
-        timestamp: Date.now(),
-      };
-      setState(prev => ({
-        ...prev,
-        transcript: [...prev.transcript, entry],
-      }));
+    (role: 'user' | 'agent', text: string, isPartial: boolean = false) => {
+      const cleanText = text.trim();
+      if (!cleanText) return;
+
+      setState(prev => {
+        const lastIndex = prev.transcript.length - 1;
+        const lastEntry = prev.transcript[lastIndex];
+
+        // If last entry matches current role and was partial, update in-place
+        if (lastEntry && lastEntry.role === role && (lastEntry as any).isPartial) {
+          const updated = [...prev.transcript];
+          updated[lastIndex] = {
+            ...lastEntry,
+            text: cleanText,
+            timestamp: Date.now(),
+            ...(isPartial ? {isPartial: true} : {}),
+          };
+          if (!isPartial) {
+            delete (updated[lastIndex] as any).isPartial;
+          }
+          return {...prev, transcript: updated};
+        }
+
+        // Append new entry
+        const entry: TranscriptEntry & {isPartial?: boolean} = {
+          id: `${Date.now()}-${transcriptIdRef.current++}`,
+          role,
+          text: cleanText,
+          timestamp: Date.now(),
+          ...(isPartial ? {isPartial: true} : {}),
+        };
+        return {...prev, transcript: [...prev.transcript, entry]};
+      });
     },
     [],
   );
 
   /**
    * Decodes Agora v2.9 agent stream message payload.
-   * Format: "message_id|part_num|total_parts|base64_json"
+   * Handles multi-part packets: "message_id|part_num|total_parts|base64_json"
    */
   const parseAgoraMessage = (raw: string): any => {
     let payloadStr = raw;
 
-    // Check for Agora v2.9 pipe format
     if (raw.includes('|')) {
       const parts = raw.split('|');
-      const base64Segment = parts[parts.length - 1];
-      try {
-        if (typeof atob !== 'undefined') {
-          payloadStr = atob(base64Segment);
-        } else if (typeof Buffer !== 'undefined') {
-          payloadStr = Buffer.from(base64Segment, 'base64').toString('utf-8');
+      if (parts.length >= 4) {
+        const msgId = parts[0];
+        const partNum = parseInt(parts[1], 10);
+        const totalParts = parseInt(parts[2], 10);
+        const chunk = parts.slice(3).join('|');
+
+        if (totalParts > 1) {
+          let buffer = multiPartBufferRef.current.get(msgId);
+          if (!buffer) {
+            buffer = {parts: new Map(), total: totalParts};
+            multiPartBufferRef.current.set(msgId, buffer);
+          }
+          buffer.parts.set(partNum, chunk);
+
+          // Check if all parts have arrived
+          if (buffer.parts.size === totalParts) {
+            let combinedBase64 = '';
+            for (let i = 1; i <= totalParts; i++) {
+              combinedBase64 += buffer.parts.get(i) || '';
+            }
+            multiPartBufferRef.current.delete(msgId);
+
+            try {
+              if (typeof atob !== 'undefined') {
+                payloadStr = atob(combinedBase64);
+              } else if (typeof (globalThis as any).Buffer !== 'undefined') {
+                payloadStr = (globalThis as any).Buffer.from(combinedBase64, 'base64').toString('utf-8');
+              }
+            } catch (e) {
+              payloadStr = combinedBase64;
+            }
+          } else {
+            // Waiting for remaining parts
+            return null;
+          }
+        } else {
+          // Single-part packet
+          try {
+            if (typeof atob !== 'undefined') {
+              payloadStr = atob(chunk);
+            } else if (typeof (globalThis as any).Buffer !== 'undefined') {
+              payloadStr = (globalThis as any).Buffer.from(chunk, 'base64').toString('utf-8');
+            }
+          } catch (e) {
+            payloadStr = chunk;
+          }
         }
-      } catch (e) {
-        // Not base64, fallback to raw
-        payloadStr = raw;
       }
     }
 
@@ -82,9 +141,11 @@ export function useAgentState(): UseAgentStateReturn {
       logger.info(TAG, `Stream message from ${senderId}:`, message);
 
       const parsed = parseAgoraMessage(message);
+      if (!parsed) return; // Multi-part packet buffering in progress
+
       logger.info(TAG, 'Parsed Agora v2.9 payload:', parsed);
 
-      const dataType = String(parsed.data_type || parsed.type || parsed.event_type || parsed.status || parsed.state || '').toLowerCase();
+      const dataType = String(parsed.data_type || parsed.type || parsed.event_type || parsed.status || parsed.state || parsed.object || '').toLowerCase();
       const agentStateVal = String(parsed.state || parsed.status || '').toLowerCase();
 
       // ─── Agent State Transitions ──────────────────────────────────────────
@@ -114,12 +175,15 @@ export function useAgentState(): UseAgentStateReturn {
         }));
       }
 
-      // ─── Transcripts ──────────────────────────────────────────────────────
+      // ─── Transcripts (In-Place Update for Partial Streaming Chunks) ────────
       const text = parsed.text || parsed.content || parsed.message || parsed.transcript;
       if (text && typeof text === 'string' && text.trim().length > 0) {
-        const isUser = parsed.role === 'user' || dataType.includes('user') || parsed.module === 'ASR';
+        const isUser = parsed.role === 'user' || dataType.includes('user') || parsed.module === 'ASR' || parsed.object === 'user.transcription';
         const role = isUser ? 'user' : 'agent';
-        addTranscriptEntry(role, text.trim());
+
+        // Check if turn is final or in progress
+        const isPartial = parsed.turn_status === 0 || parsed.is_final === false;
+        addTranscriptEntry(role, text.trim(), isPartial);
       }
     },
     [addTranscriptEntry],
@@ -129,6 +193,7 @@ export function useAgentState(): UseAgentStateReturn {
   const resetState = useCallback(() => {
     setState(INITIAL_STATE);
     transcriptIdRef.current = 0;
+    multiPartBufferRef.current.clear();
     logger.info(TAG, 'State reset');
   }, []);
 
